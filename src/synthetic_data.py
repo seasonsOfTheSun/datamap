@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import string
 import time
-
+import copy
 import os
 import json
 
@@ -24,12 +24,16 @@ class SyntheticDataSet:
     """ """
     
     def __init__(self, n_clusters,
- dimension, center_d, scale, size, ellipticity = 0, scale_range=0, center_d_range=0, size_range=0, transform_dataset = "pass"):
+                       dimension, 
+                       center_d,
+                       scale, 
+                       size,
+                       ellipticity = 0, scale_range=0, center_d_range=0, size_range=0, transform_dataset = "pass"):
         self.n_clusters = int(n_clusters)
         self.dimension = int(dimension)
         self.scale = scale
         self.center_d = center_d
-        self.size = int(size)
+        self.size = size
         self.scale_range=scale_range
         self.center_d_range=center_d_range
         self.size_range=size_range
@@ -147,24 +151,23 @@ class SyntheticDataSet:
         self.data.to_csv(f"{foldername}/features.csv")
         self.labels.to_csv(f"{foldername}/labels.csv")
 
-        for parameter, network in self.network:
+        for parameters, network in self.network.items():
             
             for edge in network.edges():
                 network.edges()[edge]['weight'] = str(network.edges()[edge]['weight'])
 
-            metric  = parameters['metric']
-            nneighbors =  parameters['nneighbors']
+            metric  = parameters[0]
+            nneighbors =  parameters[1]
 
             nx.write_gml(network,f"{foldername}/metric_{metric}_nneighbors_{nneighbors}.gml")
             fp = open(f"{foldername}/evaluation_time_metric_{metric}_nneighbors_{nneighbors}", 'w')
-            fp.write(str(self.network_evaluation_time[parameter]))
+            fp.write(str(self.network_evaluation_time[parameters]))
             fp.close()
 
 import re
 def load(foldername):
 
     parameterdict = json.load(open(f"{foldername}/parameters.json"))
-        
     dataset = SyntheticDataSet(parameterdict['n_clusters'],
                                      parameterdict['dimension'],
                                      parameterdict['center_d'],
@@ -175,9 +178,9 @@ def load(foldername):
                                      parameterdict['center_d_range'],
                                      parameterdict['size_range'],
                                      transform_dataset = parameterdict['transform_dataset'])
-    
-    
-    
+
+
+
     dataset.data = pd.read_csv(f"{foldername}/features.csv", index_col = 0)
     dataset.labels = pd.read_csv(f"{foldername}/labels.csv", index_col = 0, header = None)[1]
 
@@ -203,12 +206,11 @@ class SyntheticDataSetSeries:
         self.start_dataset = start_dataset
         self.attr = attr
         self.value_range = value_range
-    
+
     def make_series(self):
-        """
-        Make the series by changin the value of one of the parameters, 
+        """Make the series by changin the value of one of the parameters,
         or the mean value if the parameter varies by cluster within the dataset.
-        """
+        """ 
         out = []
         for i in self.value_range:
             copied_dataset = copy.deepcopy(self.start_dataset)
@@ -218,9 +220,8 @@ class SyntheticDataSetSeries:
             out.append(copied_dataset)
         self.datasets = out
 
-
     def save(self, foldername = "data/synthetic/scratch",  save_tabular_data = True):
         
         os.makedirs(foldername, exist_ok = True)
-        for i, dataset in enumerate(self.datasets()):
+        for i, dataset in enumerate(self.datasets):
             dataset.save(foldername + f"/dataset_{i}/")
