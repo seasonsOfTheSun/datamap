@@ -1,2 +1,3 @@
 data/*
 datamap/*
+src/__pycache__/*
