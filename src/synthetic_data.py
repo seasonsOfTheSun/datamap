@@ -51,13 +51,13 @@ class SyntheticDataSet:
         n_clusters = self.n_clusters
         
         if type(self.scale) != list:
-            self.scale = [self.scale+(i-0.5*n_clusters)*self.scale_range/n_clusters for i in range(n_clusters)]
+            self.scale_expanded = [self.scale+(i-0.5*n_clusters)*self.scale_range/n_clusters for i in range(n_clusters)]
 
         if type(self.center_d) != list:
-            self.center_d = [self.center_d+(i-0.5*n_clusters)*self.center_d_range/n_clusters for i in range(n_clusters)]
+            self.center_d_expanded = [self.center_d+(i-0.5*n_clusters)*self.center_d_range/n_clusters for i in range(n_clusters)]
         
         if type(self.size) != list:
-            self.size = [int(self.size+(i-0.5*n_clusters)*self.size_range/n_clusters) for i in range(n_clusters)]
+            self.size_expanded = [int(self.size+(i-0.5*n_clusters)*self.size_range/n_clusters) for i in range(n_clusters)]
     
     def make_dataset(self):
         """ Create the features from the parameters given, then """
@@ -67,11 +67,11 @@ class SyntheticDataSet:
         # Make cluster centers
         randdirs = np.random.randn(self.n_clusters, self.dimension)
         randdirs = randdirs / np.sqrt((randdirs**2).sum(axis = 1)).reshape((self.n_clusters,1))
-        self.centers = np.array([[i] for i in self.center_d]) * randdirs
+        self.centers = np.array([[i] for i in self.center_d_expanded]) * randdirs
         
         out = []# Make the data points within each cluster and scale and distribute accordingly
-        for i,n in enumerate(self.size):
-            temp = self.scale[i]*np.random.randn(n, self.dimension)
+        for i,n in enumerate(self.size_expanded):
+            temp = self.scale_expanded[i]*np.random.randn(n, self.dimension)
             
             # Add variation to the clusters along different axes so they are less spherical
             temp = (1 + self.ellipticity*np.random.rand(self.dimension)).reshape(-1,self.dimension) * temp
@@ -80,10 +80,10 @@ class SyntheticDataSet:
             out.append(temp)
 
 
-
         # Join into dataframes
         self.data= pd.concat(out)
-        self.labels = np.concatenate([[i]*v for i,v in enumerate(self.size)])
+        self.labels = np.concatenate([[i]*v for i,v in enumerate(self.size_expanded)])
+
     
         # Consistent names for columns and indices
         self.elementnames = [randstring() for i in range(len(self.data.index))]
@@ -93,14 +93,11 @@ class SyntheticDataSet:
 
         self.data.columns = self.original_features
         self.labels = pd.Series(self.labels, index = self.elementnames)
-        
                 
         self.data = self.data.sample(frac=1) # re-order the datapoints so that nothing 
-                                     # can be accidentally inferred form their ordering.
+                                             # can be accidentally inferred form their ordering.
             
         exec(self.transform_dataset) # apply a nonlinear transform to creat a new set of features
-        
-
 
         metric = 'euclidean'
         nneighbors = 10
