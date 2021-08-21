@@ -3,14 +3,14 @@ joblib
 llvmlite
 networkx
 numba
-numpy
+numpy<=1.19.2
 pandas
 pynndescent
 python-dateutil
 pytz
 scikit-learn
 scipy
-six
+six<=1.15.0
 threadpoolctl
 umap-learn
 python-louvain
