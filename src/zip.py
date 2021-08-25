@@ -18,5 +18,8 @@ if __name__ == "__main__":
    
    import sys
    foldername = sys.argv[1]
+   if foldername[-1] == "/":
+       foldername = foldername[:-1]
+       
    df = join_files(foldername)
    df.to_csv(foldername + ".csv")
