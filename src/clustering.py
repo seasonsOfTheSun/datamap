@@ -19,7 +19,7 @@ class ClusteringMethod:
 
     def apply(self, dataset,  scoring_method = sklearn.metrics.adjusted_rand_score):
         
-        memory,_ = memory_usage((self.cluster, (dataset,)), max_usage = True, retval = True)
+        memory,_ = memory_profiler.memory_usage((self.cluster, (dataset,)), max_usage = True, retval = True)
         self.labels = self.labels.reindex(dataset.labels.index)
         masked = self.labels.isna() | dataset.labels.isna()
         score = scoring_method(self.labels[~masked], dataset.labels[~masked])   
