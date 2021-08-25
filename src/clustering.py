@@ -1,6 +1,7 @@
 import numpy
 import pandas
 import time
+import memory_profiler
 
 class ClusteringMethodType:
     
@@ -17,15 +18,16 @@ import sklearn.metrics
 class ClusteringMethod:
 
     def apply(self, dataset,  scoring_method = sklearn.metrics.adjusted_rand_score):
-        self.cluster(dataset)
+        
+        memory,_ = memory_usage((self.cluster, (dataset,)), max_usage = True, retval = True)
         self.labels = self.labels.reindex(dataset.labels.index)
         masked = self.labels.isna() | dataset.labels.isna()
         score = scoring_method(self.labels[~masked], dataset.labels[~masked])   
-        return score, self.evaluation_time, sum(masked)
+        return score, self.evaluation_time, sum(masked), memory
 
     def write(self, dataset, filename, dataset_name = "default"):
         parameterdict = dataset.parameter_summary()
-        result_summary = dict(zip(["score", "time", "omitted"],self.apply(dataset)))
+        result_summary = dict(zip(["score", "time", "omitted", "max_memory"],self.apply(dataset)))
         temp = pandas.Series({"dataset_name":dataset_name, **parameterdict, **self.summary(), **self.methodtype.summary(), **result_summary})
         temp.to_csv(filename, header = None)
 
@@ -170,8 +172,6 @@ def autencoded_clustering(df, encoding_dim = 2, validation_split = 0.0):
 autoencode_type = ClusteringMethodType("Autoencode",  cmap["princeton-orange"])
 
     
-
-    
 clustering_methods = []
 
 for i in range(2,3):
@@ -211,17 +211,16 @@ clustering_methods.append(NetworkClusteringMethod(gmtype,
 clustering_method_dict = {c.name_specific:c for c in clustering_methods}
 
 if __name__ == "__main__":
-     
+
      import os
      import sys
      import synthetic_data
 
-     
      clustering_method_name = sys.argv[1]
      dataset_filename = sys.argv[2]
      output_filename = sys.argv[3]
-     
+
      method = clustering_method_dict[clustering_method_name]
      dataset = synthetic_data.load(dataset_filename)
-     
+
      method.write(dataset, output_filename)
