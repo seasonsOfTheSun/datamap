@@ -215,11 +215,14 @@ if __name__ == "__main__":
      import os
      import sys
      import synthetic_data
+     import uuid
 
      clustering_method_name = sys.argv[1]
      dataset_filename = sys.argv[2]
-     output_filename = sys.argv[3]
-
+     output_folder = sys.argv[3]
+     if output_folder[-1] != "/":
+         output_folder += "/"
+     output_filename = output_folder + str(uuid.uuid4()) + ".csv"
      method = clustering_method_dict[clustering_method_name]
      dataset = synthetic_data.load(dataset_filename)
 
