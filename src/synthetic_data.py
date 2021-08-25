@@ -23,12 +23,18 @@ def umap_network(X, nneighbors = 10, metric = 'euclidean'):
 class SyntheticDataSet:
     """ """
     
-    def __init__(self, n_clusters,
-                       dimension, 
-                       center_d,
-                       scale, 
-                       size,
-                       ellipticity = 0, scale_range=0, center_d_range=0, size_range=0, transform_dataset = "pass"):
+    def __init__(self, n_clusters=2,
+                       dimension=2, 
+                       center_d=1,
+                       scale=0.25, 
+                       size=10,
+                       final_dimension = 100,
+                       ellipticity = 0, 
+                       scale_range=0, 
+                       center_d_range=0, 
+                       size_range=0, 
+                       transform_dataset = "pass"
+                       ):
         self.n_clusters = int(n_clusters)
         self.dimension = int(dimension)
         self.scale = scale
@@ -41,6 +47,7 @@ class SyntheticDataSet:
         self.transform_dataset = transform_dataset
         self.network = {}
         self.network_evaluation_time = {}
+        self.final_dimension = final_dimension
         
     def vary_clusters(self):
         """
@@ -222,3 +229,58 @@ class SyntheticDataSetSeries:
         os.makedirs(foldername, exist_ok = True)
         for i, dataset in enumerate(self.datasets):
             dataset.save(foldername + f"/dataset_{i}/")
+
+if __name__ == "__main__":
+    
+
+    base_dataset = SyntheticDataSet(
+        n_clusters=10,
+        dimension=5, 
+        center_d=10,
+        scale=10, 
+        size=10,
+        
+        transform_dataset = """
+amplitude = 1
+period = 10
+n = 100
+
+for i in range(self.final_dimension):
+    col = np.random.choice(self.original_features, n)
+    randmat = np.random.randn(n)
+    bart = (randmat.reshape((1,n)) * self.data[col]).sum(axis = 1)
+
+    self.data[f"Transformed_{i}"] = list(map(lambda x : x**2, bart))
+
+for col in self.original_features:
+    del self.data[col]
+
+self.data = self.data/self.data.var()
+true_dimension = len(self.data.columns)"""
+    )
+
+    scale_dataset = SyntheticDataSetSeries(
+        base_dataset,
+        'scale',
+        list(np.linspace(0.0, 20.0, 11))
+    )
+    scale_dataset.make_series()
+    scale_dataset.save("data/synthetic/scale")
+
+    size_dataset = SyntheticDataSetSeries(
+        base_dataset,
+        'size',
+        []
+    )
+    size_dataset.make_series()
+    size_dataset.save("data/synthetic/size")
+
+    dimension_dataset = SyntheticDataSetSeries(
+        base_dataset,
+        'dimension',
+        []
+    )
+    dimension_dataset.make_series()
+    dimension_dataset.save("data/synthetic/dimension")
+
+
