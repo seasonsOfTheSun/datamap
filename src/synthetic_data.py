@@ -267,6 +267,7 @@ true_dimension = len(self.data.columns)"""
     scale_dataset.make_series()
     scale_dataset.save("data/synthetic/scale")
 
+    print("scale")
     size_dataset = SyntheticDataSetSeries(
         base_dataset,
         'size',
@@ -275,6 +276,7 @@ true_dimension = len(self.data.columns)"""
     size_dataset.make_series()
     size_dataset.save("data/synthetic/size")
 
+    print("size")
     dimension_dataset = SyntheticDataSetSeries(
         base_dataset,
         'dimension',
@@ -282,12 +284,12 @@ true_dimension = len(self.data.columns)"""
     )
     dimension_dataset.make_series()
     dimension_dataset.save("data/synthetic/dimension")
-
+    print("dimension")
     final_dimension_dataset = SyntheticDataSetSeries(
         base_dataset,
         'final_dimension',
         [int(i) for i in np.logspace(0.2,3,10)]
     )
     final_dimension_dataset.make_series()
-    final_dimension_dataset.save("data/synthetic/final_dimension"s)
-
+    final_dimension_dataset.save("data/synthetic/final_dimension")
+    print("final dimension")
