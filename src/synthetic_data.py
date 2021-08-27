@@ -119,6 +119,7 @@ class SyntheticDataSet:
 
         parameterdict = {'n_clusters':self.n_clusters,
         'dimension':self.dimension,
+        'final_dimension':self.final_dimension,                         
         'center_d':self.center_d,
         'scale':self.scale,
         'size':self.size,
