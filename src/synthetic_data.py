@@ -173,15 +173,15 @@ def load(foldername):
 
     parameterdict = json.load(open(f"{foldername}/parameters.json"))
     dataset = SyntheticDataSet(parameterdict['n_clusters'],
-                                     parameterdict['dimension'],
-                                     parameterdict['center_d'],
-                                     parameterdict['scale'],
-                                     parameterdict['size'],
-                                     parameterdict['ellipticity'],
-                                     parameterdict['scale_range'],
-                                     parameterdict['center_d_range'],
-                                     parameterdict['size_range'],
-                                     transform_dataset = parameterdict['transform_dataset'])
+                               parameterdict['dimension'],
+                               parameterdict['center_d'],
+                               parameterdict['scale'],
+                               parameterdict['size'],
+                               parameterdict['ellipticity'],
+                               parameterdict['scale_range'],
+                               parameterdict['center_d_range'],
+                               parameterdict['size_range'],
+                               transform_dataset = parameterdict['transform_dataset'])
 
 
 
@@ -262,7 +262,7 @@ true_dimension = len(self.data.columns)"""
     scale_dataset = SyntheticDataSetSeries(
         base_dataset,
         'scale',
-        list(np.linspace(0.0, 20.0, 11))
+        list(np.linspace(0.0, 5.0, 11))
     )
     scale_dataset.make_series()
     scale_dataset.save("data/synthetic/scale")
