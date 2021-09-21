@@ -264,7 +264,7 @@ true_dimension = len(self.data.columns)"""
     scale_dataset = SyntheticDataSetSeries(
         base_dataset,
         'scale',
-        list(np.linspace(0.0, 20.0, 11))
+        list(np.linspace(0.0, 5.0, 11))
     )
     scale_dataset.make_series()
     scale_dataset.save("data/synthetic/scale")
