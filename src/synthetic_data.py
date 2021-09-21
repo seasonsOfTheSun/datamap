@@ -174,7 +174,8 @@ def load(foldername):
 
     parameterdict = json.load(open(f"{foldername}/parameters.json"))
     dataset = SyntheticDataSet(parameterdict['n_clusters'],
-                                     parameterdict['dimension'],
+                                     parameterdict['dimension',]
+                                     parameterdict['final_dimension'],                               
                                      parameterdict['center_d'],
                                      parameterdict['scale'],
                                      parameterdict['size'],
