@@ -232,8 +232,23 @@ class SyntheticDataSetSeries:
             dataset.save(foldername + f"/dataset_{i}/")
 
 if __name__ == "__main__":
-    
 
+    parameters = json.load(open(sys.argv[1]))
+    name = sys.argv[2]
+    independent_variable = parameters["independent_variable"]
+    variable_values = parameters["variable_values"]    
+    base_dataset = SyntheticDataSet(**base_parameters)
+
+    
+    dataset_series = SyntheticDataSetSeries(
+        base_dataset,
+        independent_variable
+        variable_values
+    )
+    
+    dimension_dataset.make_series()
+    dimension_dataset.save(f"data/synthetic/{name}")
+    """
     base_dataset = SyntheticDataSet(
         n_clusters=10,
         dimension=5, 
@@ -241,7 +256,7 @@ if __name__ == "__main__":
         scale=10, 
         size=10,
         
-        transform_dataset = """
+        transform_dataset = 
 amplitude = 1
 period = 10
 n = 100
@@ -257,7 +272,7 @@ for col in self.original_features:
     del self.data[col]
 
 self.data = self.data/self.data.var()
-true_dimension = len(self.data.columns)"""
+true_dimension = len(self.data.columns)
     )
 
     scale_dataset = SyntheticDataSetSeries(
@@ -268,6 +283,7 @@ true_dimension = len(self.data.columns)"""
     scale_dataset.make_series()
     scale_dataset.save("data/synthetic/scale")
 
+    
     print("scale")
     size_dataset = SyntheticDataSetSeries(
         base_dataset,
@@ -294,3 +310,4 @@ true_dimension = len(self.data.columns)"""
     final_dimension_dataset.make_series()
     final_dimension_dataset.save("data/synthetic/final_dimension")
     print("final dimension")
+"""
