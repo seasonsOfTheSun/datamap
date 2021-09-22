@@ -1,0 +1,7 @@
+{"n_clusters":10,
+"dimension":5, 
+"center_d":10,
+"scale":10, 
+"size":10,
+
+"transform_dataset" : "amplitude = 1\nperiod = 10\nn = 100\n\nfor i in range(self.final_dimension):\n    col = np.random.choice(self.original_features, n)\n    randmat = np.random.randn(n)\n    bart = (randmat.reshape((1,n)) * self.data[col]).sum(axis = 1)\n\n    self.data[f\"Transformed_{i}\"] = list(map(lambda x : x**2, bart))\n\nfor col in self.original_features:\n    del self.data[col]\n\nself.data = self.data/self.data.var()\ntrue_dimension = len(self.data.columns)"}
