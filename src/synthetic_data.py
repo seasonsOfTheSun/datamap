@@ -99,8 +99,7 @@ class SyntheticDataSet:
 
 
         self.data.columns = self.original_features
-        self.labels = pd.Series(self.labels, index = self.elementnames)
-                
+        self.labels = pd.Series(self.labels, index = self.elementnames)                
         self.data = self.data.sample(frac=1) # re-order the datapoints so that nothing 
                                              # can be accidentally inferred form their ordering.
             
