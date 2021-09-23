@@ -63,7 +63,7 @@ class NetworkClusteringMethod(ClusteringMethod):
         start_time = time.time()
         self.labels = self.function(network, **self.parameters)
         end_time = time.time()
-        self.evaluation_time = end_time - start_time + dataset.network_evaluation_time[network_parameters] 
+        self.evaluation_time = end_time - start_time + dataset.network_evaluation_time[self.network_parameters] 
 
     def summary(self):
         return {"specific_name":self.name_specific,
@@ -120,9 +120,11 @@ def umap_network(X):
     return nx.relabel_nodes(G, dict(enumerate(X.index)).get)
 
 def greedyModularity(G):
-    nodes = G.nodes()
-    clusters = nx.community.modularity_max.greedy_modularity_communities(G)
-    df = pandas.DataFrame([[i in a for a in clusters] for i in  nodes])
+    nodes = list(G.nodes())
+    node2id = {v:i for i,v in enumerate(nodes)}
+    H = nx.relabel_nodes(G, node2id)
+    clusters = nx.community.modularity_max.greedy_modularity_communities(H)
+    df = pandas.DataFrame([[i in a for a in clusters] for i in range(len(nodes))])
     df.index = nodes
     return df.idxmax(axis = 1)
         
@@ -176,7 +178,7 @@ clustering_methods = []
 
 for i in range(2,3):
     clustering_methods.append(DataClusteringMethod(autoencode_type, 
-                                               f"{i}-Dimensional Autencoder",
+                                               f"{i}-Dimensional Autoencoder",
                                                 lambda X:autencoded_clustering(X, encoding_dim = i))
                              )
 

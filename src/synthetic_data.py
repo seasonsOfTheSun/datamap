@@ -138,6 +138,7 @@ class SyntheticDataSet:
 
         parameterdict = {'n_clusters':self.n_clusters,
         'dimension':self.dimension,
+        'final_dimension':self.final_dimension,
         'center_d':self.center_d,
         'scale':self.scale,
         'size':self.size,
@@ -169,11 +170,13 @@ class SyntheticDataSet:
             fp.close()
 
 import re
+
+
 def load(foldername):
 
     parameterdict = json.load(open(f"{foldername}/parameters.json"))
     dataset = SyntheticDataSet(parameterdict['n_clusters'],
-                                     parameterdict['dimension',]
+                                     parameterdict['dimension'],
                                      parameterdict['final_dimension'],                               
                                      parameterdict['center_d'],
                                      parameterdict['scale'],
@@ -183,8 +186,6 @@ def load(foldername):
                                      parameterdict['center_d_range'],
                                      parameterdict['size_range'],
                                      transform_dataset = parameterdict['transform_dataset'])
-
-
 
     dataset.data = pd.read_csv(f"{foldername}/features.csv", index_col = 0)
     dataset.labels = pd.read_csv(f"{foldername}/labels.csv", index_col = 0, header = None)[1]
@@ -196,13 +197,11 @@ def load(foldername):
         metric = parameters['metric']
         nneighbors = int(parameters['nneighbors'])
 
-        dataset.network[(metric, nneighbors)] = nx.read_gml(f"{foldername}/metric_{metric}_nneighbors_{nneighbors}.gml")
+        dataset.network[(metric, nneighbors)] = nx.read_gml(f"{foldername}/metric_{metric}_nneighbors_{nneighbors}.gml", destringizer = float)
         fp = open(f"{foldername}/evaluation_time_metric_{metric}_nneighbors_{nneighbors}")
         dataset.network_evaluation_time[(metric, nneighbors)]  = float(fp.read().strip())
 
     return dataset
-
-
 
 class SyntheticDataSetSeries:
 
@@ -232,22 +231,24 @@ class SyntheticDataSetSeries:
             dataset.save(foldername + f"/dataset_{i}/")
 
 if __name__ == "__main__":
-
-    parameters = json.load(open(sys.argv[1]))
-    name = sys.argv[2]
-    independent_variable = parameters["independent_variable"]
-    variable_values = parameters["variable_values"]    
-    base_dataset = SyntheticDataSet(**base_parameters)
-
     
+    import sys
+    import json
+    
+    filename = sys.argv[1]
+    parameters = json.load(open(sys.argv[1]))
+    name = filename.split("/")[-1].split(".")[0]
+    independent_variable = parameters["independent_variable"]
+    variable_values = eval(parameters["variable_values"])
+    base_parameters = {k:v for k,v in parameters.items() if k not in ["variable_values", "independent_variable"]}
+    base_dataset = SyntheticDataSet(**base_parameters)
     dataset_series = SyntheticDataSetSeries(
         base_dataset,
-        independent_variable
-        variable_values
-    )
-    
-    dimension_dataset.make_series()
-    dimension_dataset.save(f"data/synthetic/{name}")
+        independent_variable,
+        variable_values)
+
+    dataset_series.make_series()
+    dataset_series.save(f"data/synthetic/{name}")
     """
     base_dataset = SyntheticDataSet(
         n_clusters=10,
