@@ -5,4 +5,4 @@
 "size":10,
 "independent_variable":"scale",
 "variable_values":"list(np.linspace(0.0, 5.0, 11))",
-"transform_dataset" : "amplitude = 1\nperiod = 10\nn = 100\n\nfor i in range(self.final_dimension):\n    col = np.random.choice(self.original_features, n)\n    randmat = np.random.randn(n)\n    pretransformed = (randmat.reshape((1,n)) * self.data[col]).sum(axis = 1)\n\n    self.data[f\"Transformed_{i}\"] = list(map(lambda x : x**2, pretransformed))\n\nfor col in self.original_features:\n    del self.data[col]\n\nself.data = self.data/self.data.var()\ntrue_dimension = len(self.data.columns)"}
+ "transform_dataset" : "plane_injection = np.random.randn(self.final_dimension, self.dimension)\na,_,_, _ = np.linalg.lstsq(plane_injection, [1]*plane_injection.shape[0])\nnormal = [1]*plane_injection.shape[0] - np.matmul(plane_injection, a)\nbaseline = np.matmul(plane_injection, pretransformed.T).T\ntime = baseline[:,1]\n\nperiod = 4\namplitude = 10\nz = amplitude * np.sin(time / period)\ndeviation = np.matmul(z.reshape(-1, 1),normal.reshape(1,-1))\nself.data = baseline + deviation"}

@@ -71,24 +71,32 @@ class SyntheticDataSet:
         
         self.vary_clusters()
         
-        # Make cluster centers
-        randdirs = np.random.randn(self.n_clusters, self.dimension)
+        randdirs = np.random.randn(self.n_clusters,  self.dimension)
         randdirs = randdirs / np.sqrt((randdirs**2).sum(axis = 1)).reshape((self.n_clusters,1))
-        self.centers = np.array([[i] for i in self.center_d_expanded]) * randdirs
-        
-        out = []# Make the data points within each cluster and scale and distribute accordingly
+
+
+
+
+
+        centers = np.array([[i] for i in  self.center_d_expanded]) * randdirs
+        out = []
+
         for i,n in enumerate(self.size_expanded):
             temp = self.scale_expanded[i]*np.random.randn(n, self.dimension)
-            
+
             # Add variation to the clusters along different axes so they are less spherical
             temp = (1 + self.ellipticity*np.random.rand(self.dimension)).reshape(-1,self.dimension) * temp
             temp = pd.DataFrame(temp)
-            temp = temp + self.centers[i,:]
+            temp = temp + centers[i,:]
             out.append(temp)
 
+        pretransformed = pd.concat(out).values
+        exec(self.transform_dataset) # apply a nonlinear transform to creat a new set of features
+        self.data = pd.DataFrame(self.data)
 
-        # Join into dataframes
-        self.data= pd.concat(out)
+
+        
+        # make labels
         self.labels = np.concatenate([[i]*v for i,v in enumerate(self.size_expanded)])
 
     
@@ -103,7 +111,7 @@ class SyntheticDataSet:
         self.data = self.data.sample(frac=1) # re-order the datapoints so that nothing 
                                              # can be accidentally inferred form their ordering.
             
-        exec(self.transform_dataset) # apply a nonlinear transform to creat a new set of features
+        
 
         metric = 'euclidean'
         nneighbors = 10
@@ -175,17 +183,17 @@ import re
 def load(foldername):
 
     parameterdict = json.load(open(f"{foldername}/parameters.json"))
-    dataset = SyntheticDataSet(parameterdict['n_clusters'],
-                                     parameterdict['dimension'],
-                                     parameterdict['final_dimension'],                               
-                                     parameterdict['center_d'],
-                                     parameterdict['scale'],
-                                     parameterdict['size'],
-                                     parameterdict['ellipticity'],
-                                     parameterdict['scale_range'],
-                                     parameterdict['center_d_range'],
-                                     parameterdict['size_range'],
-                                     transform_dataset = parameterdict['transform_dataset'])
+    dataset = SyntheticDataSet(n_clusters=parameterdict['n_clusters'],
+                               dimension=parameterdict['dimension'],
+                               final_dimension=parameterdict['final_dimension'],
+                               center_d=parameterdict['center_d'],
+                               scale=parameterdict['scale'],
+                               size=parameterdict['size'],
+                               ellipticity=parameterdict['ellipticity'],
+                               scale_range=parameterdict['scale_range'],
+                               center_d_range=parameterdict['center_d_range'],
+                               size_range=parameterdict['size_range'],
+                               transform_dataset = parameterdict['transform_dataset'])
 
     dataset.data = pd.read_csv(f"{foldername}/features.csv", index_col = 0)
     dataset.labels = pd.read_csv(f"{foldername}/labels.csv", index_col = 0, header = None)[1]
@@ -212,9 +220,9 @@ class SyntheticDataSetSeries:
         self.value_range = value_range
 
     def make_series(self):
-        """Make the series by changin the value of one of the parameters,
+        """Make the series by changing the value of one of the parameters,
         or the mean value if the parameter varies by cluster within the dataset.
-        """ 
+        """
         out = []
         for i in self.value_range:
             copied_dataset = copy.deepcopy(self.start_dataset)
@@ -256,7 +264,6 @@ if __name__ == "__main__":
         center_d=10,
         scale=10, 
         size=10,
-        
         transform_dataset = 
 amplitude = 1
 period = 10
