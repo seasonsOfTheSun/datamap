@@ -2,8 +2,8 @@
 "dimension":5, 
 "center_d":10,
 "scale":10, 
-"size":10,
- "final_dimension":100,
+"size":70,
+"final_dimension":100,
 "independent_variable":"scale",
-"variable_values":"list(np.linspace(0.0, 5.0, 11))",
+"variable_values":"list(np.linspace(0.0, 2.5, 11))",
  "transform_dataset" : "plane_injection = np.random.randn(self.final_dimension, self.dimension)\na,_,_, _ = np.linalg.lstsq(plane_injection, [1]*plane_injection.shape[0])\nnormal = [1]*plane_injection.shape[0] - np.matmul(plane_injection, a)\nbaseline = np.matmul(plane_injection, pretransformed.T).T\ntime = baseline[:,1]\n\nperiod = 4\namplitude = 10\nz = amplitude * np.sin(time / period)\ndeviation = np.matmul(z.reshape(-1, 1),normal.reshape(1,-1))\nself.data = baseline + deviation"}
