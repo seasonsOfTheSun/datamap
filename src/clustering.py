@@ -23,7 +23,7 @@ class ClusteringMethod:
         self.labels = self.labels.reindex(dataset.labels.index)
         masked = self.labels.isna() | dataset.labels.isna()
         score = scoring_method(self.labels[~masked], dataset.labels[~masked])   
-        return score, self.evaluation_time, sum(masked), memory
+        return score, self.evaluation_time, sum(masked), memory[0]
 
     def write(self, dataset, filename, dataset_name = "default"):
         parameterdict = dataset.parameter_summary()
@@ -58,7 +58,9 @@ class NetworkClusteringMethod(ClusteringMethod):
         self.network_parameters = network_parameters
         self.parameters = parameters
 
+
     def cluster(self, dataset):
+
         network = dataset.network[self.network_parameters]
         start_time = time.time()
         self.labels = self.function(network, **self.parameters)
