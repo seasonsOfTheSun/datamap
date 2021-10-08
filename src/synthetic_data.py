@@ -29,7 +29,7 @@ class SyntheticDataSet:
                        scale=0.25, 
                        size=10,
                        final_dimension = 100,
-                       ellipticity = 0, 
+                       ellipticity = 1, 
                        scale_range=0, 
                        center_d_range=0, 
                        size_range=0, 
@@ -65,37 +65,26 @@ class SyntheticDataSet:
         
         if type(self.size) != list:
             self.size_expanded = [int(self.size+(i-0.5*n_clusters)*self.size_range/n_clusters) for i in range(n_clusters)]
-    
     def make_dataset(self):
         """ Create the features from the parameters given, then """
         
         self.vary_clusters()
-        
-        randdirs = np.random.randn(self.n_clusters,  self.dimension)
-        randdirs = randdirs / np.sqrt((randdirs**2).sum(axis = 1)).reshape((self.n_clusters,1))
-
-
-
-
-
-        centers = np.array([[i] for i in  self.center_d_expanded]) * randdirs
+        centers = np.random.randn(self.n_clusters,  self.dimension)
         out = []
 
         for i,n in enumerate(self.size_expanded):
             temp = self.scale_expanded[i]*np.random.randn(n, self.dimension)
 
             # Add variation to the clusters along different axes so they are less spherical
-            temp = (1 + self.ellipticity*np.random.rand(self.dimension)).reshape(-1,self.dimension) * temp
+            temp = (1+(self.ellipticity-1)*np.random.rand(self.dimension)).reshape(-1,self.dimension) * temp
             temp = pd.DataFrame(temp)
             temp = temp + centers[i,:]
             out.append(temp)
 
-        pretransformed = pd.concat(out).values
+        self.pretransformed = pd.concat(out).values
         exec(self.transform_dataset) # apply a nonlinear transform to creat a new set of features
         self.data = pd.DataFrame(self.data)
 
-
-        
         # make labels
         self.labels = np.concatenate([[i]*v for i,v in enumerate(self.size_expanded)])
 
@@ -120,6 +109,7 @@ class SyntheticDataSet:
         self.network[(metric, nneighbors)] = umap_network(self.data, nneighbors = nneighbors, metric = metric)
         end_time = time.time()
         self.network_evaluation_time[(metric, nneighbors)] = end_time - start_time
+
 
 
     def parameter_summary(self):
