@@ -178,19 +178,19 @@ autoencode_type = ClusteringMethodType("Autoencode",  cmap["princeton-orange"])
     
 clustering_methods = []
 
-for i in range(2,3):
+for i in [3,4,5]:
     clustering_methods.append(DataClusteringMethod(autoencode_type, 
                                                f"{i}-Dimensional Autoencoder",
                                                 lambda X:autencoded_clustering(X, encoding_dim = i))
                              )
 
-for i in range(8,10):
+for i in [9,10,11]:
     clustering_methods.append(DataClusteringMethod(sc_type, 
                                                f"Spectral Clustering {i} Dimensions",
                                                 lambda X:spectral_cluster(X, i))
                              )
 
-for i in range(1,20):
+for i in [9,10,11]:
     clustering_methods.append(DataClusteringMethod(kmeans_type,
                                                f"k-Means {i}",
                                                lambda X:kmeans(X, n_clusters=i))
