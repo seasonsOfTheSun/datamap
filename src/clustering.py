@@ -25,10 +25,10 @@ class ClusteringMethod:
         score = scoring_method(self.labels[~masked], dataset.labels[~masked])   
         return score, self.evaluation_time, sum(masked), memory[0]
 
-    def write(self, dataset, filename, dataset_name = "default"):
+    def write(self, dataset, filename, **kwargs):
         parameterdict = dataset.parameter_summary()
         result_summary = dict(zip(["score", "time", "omitted", "max_memory"],self.apply(dataset)))
-        temp = pandas.Series({"dataset_name":dataset_name, **parameterdict, **self.summary(), **self.methodtype.summary(), **result_summary})
+        temp = pandas.Series({**parameterdict, **self.summary(), **self.methodtype.summary(), **result_summary, **kwargs})
         temp.to_csv(filename, header = None)
 
 
@@ -224,10 +224,13 @@ if __name__ == "__main__":
      clustering_method_name = sys.argv[1]
      dataset_filename = sys.argv[2]
      output_folder = sys.argv[3]
+     git_status = sys.arv[4]
+     dataset_name, version = dataset_filename.split("/")[-2].split("-")
+     
      if output_folder[-1] != "/":
          output_folder += "/"
      output_filename = output_folder + str(uuid.uuid4()) + ".csv"
      method = clustering_method_dict[clustering_method_name]
      dataset = synthetic_data.load(dataset_filename)
 
-     method.write(dataset, output_filename)
+     method.write(dataset, output_filename, dataset_name=dataset_name, git_status=git_status, version=version)

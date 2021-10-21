@@ -232,6 +232,7 @@ if __name__ == "__main__":
     
     import sys
     import json
+    import uuid
     
     filename = sys.argv[1]
     parameters = json.load(open(sys.argv[1]))
@@ -245,8 +246,9 @@ if __name__ == "__main__":
         independent_variable,
         variable_values)
 
+    uuid = str(uuid.uuid4())
     dataset_series.make_series()
-    dataset_series.save(f"data/synthetic/{name}")
+    dataset_series.save(f"data/synthetic/{name}-{uuid}")
     """
     base_dataset = SyntheticDataSet(
         n_clusters=10,
