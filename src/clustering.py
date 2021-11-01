@@ -138,6 +138,30 @@ def louvain(G):
 
 lvtype = ClusteringMethodType('Louvain', cmap["razzmatazz"], network_method = True)
 
+import scipy.sparse
+def network_spectral(G, n_evectors=30, n_clusters=10):
+
+    nodelist = np.array(G.nodes())
+
+    # rescale rows and columns by degree
+    normalized_adjacency = scipy.sparse.eye(G.order()) - nx.normalized_laplacian_matrix(G)
+    #normalized_adjacency = nx.adjacency_matrix(G)
+    # get eigenvalues and eigenvectors of the matrix
+    e,evecs = scipy.sparse.linalg.eigsh(normalized_adjacency, k = n_evectors)
+
+    # reverse the order of eigenvalues and eigenvectors
+    e = e[::-1]; evecs = evecs[:,::-1]
+    
+    # cluster the normalized vectors
+    import sklearn.cluster
+    m = sklearn.cluster.KMeans(n_clusters = n_clusters)
+    m.fit(evecs/np.sum(evecs, axis = 1).reshape(-1,1))
+    return pd.Series(m.labels_, index=nodelist)
+
+nstype = ClusteringMethodType('network_spectral', cmap["razzmatazz"], network_method = True)
+
+
+
 # Autoencoder
 import tensorflow.keras as keras
 from tensorflow.keras import layers
@@ -167,9 +191,9 @@ def autoencode(df, encoding_dim = 2, validation_split = 0.1):
 
 
 import sklearn.cluster
-def autencoded_clustering(df, encoding_dim = 2, validation_split = 0.0):
-    codes = autoencode(df,encoding_dim=encoding_dim, validation_split =validation_split)
-    km = sklearn.cluster.KMeans(n_clusters =10)
+def autencoded_clustering(df, encoding_dim = 2,n_clusters =10 ):
+    codes = autoencode(df,encoding_dim=encoding_dim, validation_split = 0.0)
+    km = sklearn.cluster.KMeans(n_clusters=n_clusters)
     km.fit(codes)
     return  pandas.Series(km.labels_, index = df.index)
 
@@ -206,6 +230,11 @@ clustering_methods.append(NetworkClusteringMethod(lvtype,
                                            louvain)
                          )
 
+clustering_methods.append(NetworkClusteringMethod(nstype,
+                                           'network_spectral',
+                                           network_spectral)
+                         )
+
 clustering_methods.append(NetworkClusteringMethod(gmtype,
                                             'GreedyModularity',
                                             greedyModularity
@@ -224,7 +253,7 @@ if __name__ == "__main__":
      clustering_method_name = sys.argv[1]
      dataset_filename = sys.argv[2]
      output_folder = sys.argv[3]
-     git_status = sys.arv[4]
+     git_status = sys.argv[4]
      dataset_name, version = dataset_filename.split("/")[-2].split("-")
      
      if output_folder[-1] != "/":
@@ -233,4 +262,9 @@ if __name__ == "__main__":
      method = clustering_method_dict[clustering_method_name]
      dataset = synthetic_data.load(dataset_filename)
 
-     method.write(dataset, output_filename, dataset_name=dataset_name, git_status=git_status, version=version)
+     method.write(dataset, 
+                  output_filename, 
+                  dataset_name=dataset_name, 
+                  git_status=git_status, 
+                  version=version
+                  )
