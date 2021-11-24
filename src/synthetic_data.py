@@ -377,6 +377,8 @@ class SyntheticDataSet:
 
 if __name__ == "__main__":
     import sys
+    import uuid
+
     name = sys.argv[1]                
     if  name == "amplitude":
         x = {"size" : 1000,
@@ -396,7 +398,7 @@ if __name__ == "__main__":
             x["amplitude"] = int(i)
             self = SyntheticDataSet(**x)
             self.make()
-            self.save("data/synthetic/amplitude_"+str(round(i,2)))
+            self.save("data/synthetic/amplitude_"+str(round(i,2))+ str(uuid.uuid4()))
             
     elif name == "final_dimension":
         x = {"size" : 1000,
@@ -414,4 +416,4 @@ if __name__ == "__main__":
             x["posttransformed_dimension"] = int(i)
             self = SyntheticDataSet(**x)
             self.make()
-            self.save("data/synthetic/"+name+"_"+str(int(i)))
+            self.save("data/synthetic/"+name+"_"+str(int(i))+ str(uuid.uuid4()))
