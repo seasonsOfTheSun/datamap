@@ -1,13 +1,11 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 import string
-import time
-import copy
 import os
 import json
-
-# Misc. utils.
-def randstring():return "".join(np.random.choice(list(string.ascii_lowercase), (10,)))
+import time
+import copy
 
 import networkx as nx
 import umap
@@ -19,295 +17,401 @@ def umap_network(X, nneighbors = 10, metric = 'euclidean'):
     G = nx.from_scipy_sparse_matrix(G)
     return nx.relabel_nodes(G, dict(enumerate(X.index)).get)
 
-# Make clusters 
-class SyntheticDataSet:
-    """ """
+
+def randstring():return "".join(np.random.choice(list(string.ascii_lowercase), (10,)))
+
+class NoNormalError(Exception):
     
-    def __init__(self, n_clusters=2,
-                       dimension=2, 
-                       center_d=1,
-                       scale=0.25, 
-                       size=10,
-                       final_dimension = 100,
-                       ellipticity = 1, 
-                       scale_range=0, 
-                       center_d_range=0, 
-                       size_range=0, 
-                       transform_dataset = "pass"
-                       ):
-        self.n_clusters = int(n_clusters)
-        self.dimension = int(dimension)
-        self.scale = scale
-        self.center_d = center_d
-        self.size = size
-        self.scale_range=scale_range
-        self.center_d_range=center_d_range
-        self.size_range=size_range
-        self.ellipticity=ellipticity
-        self.transform_dataset = transform_dataset
+    def __init__(self):
+        pass
+
+def make_normal(span, seed_vector = None):
+    """
+    Makes a unit normal vector to a subspace.
+    
+    Produces a unit vector orthogonal to all columns of `span`.
+    
+    Parameters
+    ----------
+    span : an ndarray for whose column-span a normal is desired.
+    seed_vector : a vector
+    
+    Returns
+    -------
+    normal : a 1-dimensionl unit vector
+    
+    Raises
+    ------
+    NoNormalError if the seed vector was in the hyperplane
+    (likely if the hyperplane was the entire space)
+    
+    """
+    
+    # get a random seed vector if none provided
+    if seed_vector == None:
+        seed_vector = np.random.randn(span.shape[0])
+        
+    # find the nearest point to seed_vectoor inside the plane using 
+    # np.lstsq, and then find the 
+    a,_,_, _ = np.linalg.lstsq(span, seed_vector)
+    normal = seed_vector - np.matmul(span, a)
+    
+    if np.linalg.norm(normal) < 1e-10: # if the normal is really small i.e. was in the span
+        raise NoNormalError # raise an error
+        
+    return normal / np.linalg.norm(normal)# o/w normalize
+
+def build_simplex(space_dimension, simplex_dimension = None, center_origin = False):
+    """
+    make a n-simplex with unit length edges embedded in high dimensional space
+    
+    where n is `simplex_dimension`, 
+    
+    Parameters
+    ----------
+    space_dimension : Integer, dimension of space the simplex is embedded into.
+    simplex_dimension : Integer, number of points in the simplex.
+    center_origin : bool, if true recenter the simplex to the origin
+    
+    Returns
+    -------
+    simplex : an ndarray with shape (space dimension, simplex_dimension) 
+    """
+    if simplex_dimension == None:
+        simplex_dimension = space_dimension
+        
+    # initialise a random point exactly distance 1 from  the origin
+    point = np.random.randn(space_dimension)
+    point = point/np.linalg.norm(point)
+
+    # make the origin and this point into a 1-simplex
+    simplex = np.vstack([np.array([0]*space_dimension), point]).T
+    
+    # build up the simplex point by point, dimension by dimension
+    for i in range(simplex_dimension-2):
+        
+        # get the central point of the simplex
+        avg =  np.mean(simplex, axis = 1).reshape(-1,1)
+        base_radii = np.linalg.norm(simplex - avg, axis = 0)# distance of the centre to the points of the simplex
+        base_radius = base_radii[0]# these are all equal so pick the 0th entry indifferently
+        assert all(base_radius - base_radii < 1e-9)# check they're equal
+        
+        # get a unit vector normal to the simplex
+        normal = make_normal(simplex)
+        new_point = avg + np.sqrt(1 - base_radius**2)*normal.reshape(-1,1)# use pyhtogoaras to project it to a new point opf the simplex
+        assert all(np.linalg.norm(simplex - new_point, axis = 0) - 1 < 1e-9)
+        
+        simplex = np.hstack([simplex, new_point])
+        
+    if center_origin:
+        # recenter the simplex to the origin
+        avg =  np.mean(simplex, axis = 1).reshape(-1,1)
+        simplex = simplex-avg
+        
+        
+    return simplex
+
+def make_ctime(pretransformed_dimension, d = 0, std = 1):
+    """ Makes a temporary (linear) feature of the data that can be transformed into a nonlinear feature
+    the degree of Spearman correlation between these features can be tweaked via the parameters d and std
+    
+    Parameters
+    ----------
+    d : the offset of the cloud that the directions are renormalized from
+    
+    std : the standard deviation of the cloud that the directions are renormalized from"""
+    
+    # draw from the cloud
+    mean = np.array([d]+[0]*(pretransformed_dimension-1))
+    to_normalize = std * np.random.randn(pretransformed_dimension) + mean 
+
+    # and normalize
+    return to_normalize/np.linalg.norm(to_normalize)
+
+def fold_data(folding_value, height, transition_width):
+    """
+        # divide points into lower sheet, upper sheet, and hinge region
+    # bases on which side of the hinge they are    # calculate  position for points in the hinge, will lie in the arc
+    # of a circle connectiong the sheets    # calculate the position of the upper sheet,a mirror image of their original postion, 
+    #  shifted up into the newly created dimension
+    
+    Parameters
+    ----------
+    folding_value : the values along which we will fold the data
+    
+"""
+
+    # divide points into lower sheet, upper sheet, and hinge region
+    # bases on which side of the hinge they are
+    lower_sheet =         folding_value  < -transition_width/2
+    hinge_region = np.abs(folding_value) <= transition_width/2
+    upper_sheet =         folding_value  > transition_width/2
+
+    # calculate  position for points in the hinge, will lie in the arc
+    # of a circle connectiong the sheets
+    hinge_new_axis=height * (np.sin(np.pi * (folding_value/transition_width))+1)/2
+    hinge_replacement_axis=np.cos(np.pi * (folding_value/transition_width)) - transition_width/2
+
+
+    # calculate the position of the upper sheet,a mirror image of their original postion, 
+    #  shifted up into the newly created dimension
+    upper_new_axis=height
+    upper_replacement_axis=-folding_value
+
+    
+    # output values
+    replacement_axis = (upper_replacement_axis*upper_sheet + 
+                       hinge_replacement_axis*hinge_region +
+                       lower_sheet*folding_value)
+
+    new_axis = (upper_new_axis*upper_sheet + 
+                       hinge_new_axis*hinge_region +
+                       lower_sheet*0)
+    
+    return replacement_axis,new_axis  
+
+import numpy as np
+def square_wave(t, t_period, xy_period, amplitude, rescale):
+
+    #       _____      _____      _____
+    #      |     |    |     |    |     |
+    #      |     |    |     |    |     |
+    #  ____|     |____|     |____|     |___
+    #
+
+    # number of complete periods already elapsed
+    n = t//t_period
+    
+    # fraction of current period elapsed
+    f = t%t_period
+
+    x = n*xy_period
+    y = 0
+    
+
+    if 0 <= f < 0.25: # low horizontal
+        x += 2*f*xy_period
+        y += -amplitude
+
+    if 0.25 <= f < 0.5: # ascending vertical
+        x += 0.5*xy_period
+        y += (8*amplitude*(f-0.25) - amplitude)
+
+    if 0.5 <= f < 0.75: # high horizontal
+        x += 2*(f-0.5)*xy_period + 0.5*xy_period
+        y += amplitude
+
+    if 0.75 <= f <= 1.0:
+        x += xy_period
+        y += -8*amplitude*(f-0.75) + amplitude
+
+    return x,y
+
+class SyntheticDataSet:
+
+    
+    def __init__(self, **kwargs):
+        """
+        Makes a dataset 
+
+
+        Parameters
+        ----------
+        size : int
+        n_clusters : int
+        pretransformed_dimension : int
+        posttransformed_dimension : int
+        pretransformed_noise : float
+        posttransformed_noise : float
+
+        """
+        for i,v in kwargs.items():
+            if i in ["value_range", "attr"]:
+                pass
+            self.__setattr__(i, v)
+        
+        
+            
+    def make_pretransformed(self):
+        
+        centers = build_simplex(self.pretransformed_dimension,
+                                self.n_clusters)
+        
+        cluster_size = self.size // self.n_clusters
+        
+        out = []
+        self.labels = []
+        for i in range(self.n_clusters):
+            
+            # 
+            temp = self.pretransformed_noise*np.random.randn(cluster_size,self.pretransformed_dimension)
+            temp = temp + centers[:,i]
+            
+            
+            out.append(temp)# 
+            self.labels.extend([i]*cluster_size)
+
+        self.pretransformed_data = np.vstack(out)
+        
+        
+    def transform(self):
+        """
+        get a direction normal to plane, 
+        get another direction normal to 
+        plane and prev. selected normal
+        """
+        plane_injection = np.random.randn(self.posttransformed_dimension,
+                                          self.pretransformed_dimension)
+        previously_spanned = plane_injection
+
+        out = []
+        for i in range(self.posttransformed_dimension):
+
+            # 
+            ctime = make_ctime(self.pretransformed_dimension, d = 1, std = self.correlation_parameter)
+            value = np.matmul(ctime.reshape((1,-1)), self.pretransformed_data.T).flatten()
+
+            # get transformation method and apply it to `value`
+            transformation_name = self.__getattribute__("transformation")
+            transformation = self.__getattribute__(transformation_name)
+            transformed_values = transformation(value)
+            
+            # 
+            out.append(transformed_values.T)
+            
+        self.data = np.hstack(out)[:,:self.posttransformed_dimension]
+        
+    def square_wave(self, value):
+        """ self.t_period, self.xy_period, self.amplitude, self.rescale"""
+        xy = [square_wave(i, self.t_period, self.xy_period, self.amplitude, self.rescale) for i in value]
+        replacement_axis = [i[0] for i in xy]
+        new_axis = [i[1] for i in xy]
+        return np.hstack([replacement_axis, new_axis]).reshape((2,-1))
+    
+    def fold(self, value):
+        x,y = fold_data(value, self.height, self.transition_width)
+        return np.hstack([x,y]).reshape((2,-1))
+    
+    def none(self, value):
+        return value
+             
+    def add_more_noise(self):
+        """ Add more noise to the transformed data,
+        obscuring manifold shape.
+        """
+        self.data += self.posttransformed_noise * np.random.randn(self.data.shape[0], self.data.shape[1])
+
+    def add_metadata(self):
+        """ """
+        # save data as a dataframe and create names for rows and columns
+        self.data = pd.DataFrame(self.data)
+        self.elementnames = [randstring() for i in range(self.size)]
+        self.data.index = self.elementnames
+        self.original_features = [randstring() for i in range(self.posttransformed_dimension)]
+
+        # make sure the labels are given the same element names
+        self.data.columns = self.original_features
+        self.labels = pd.Series(self.labels, index = self.elementnames, name = "labels")
+
+        # scramble the orders the elements are in so cluster can't be learned form the order
+        self.data = self.data.sample(frac=1)
+        
+    def make_network(self):
+        
         self.network = {}
         self.network_evaluation_time = {}
-        self.final_dimension = final_dimension
+        network_name = "nneighbors_10_metric_euclidean"
         
-    def vary_clusters(self):
-        """
-        Make the variables controlling the clusters (e.g. cluster size) 
-        vary according to some predefined range.
-        
-        """
-        n_clusters = self.n_clusters
-        
-        if type(self.scale) != list:
-            self.scale_expanded = [self.scale+(i-0.5*n_clusters)*self.scale_range/n_clusters for i in range(n_clusters)]
-
-        if type(self.center_d) != list:
-            self.center_d_expanded = [self.center_d+(i-0.5*n_clusters)*self.center_d_range/n_clusters for i in range(n_clusters)]
-        
-        if type(self.size) != list:
-            self.size_expanded = [int(self.size+(i-0.5*n_clusters)*self.size_range/n_clusters) for i in range(n_clusters)]
-    def make_dataset(self):
-        """ Create the features from the parameters given, then """
-        
-        self.vary_clusters()
-        centers = np.random.randn(self.n_clusters,  self.dimension)
-        out = []
-
-        for i,n in enumerate(self.size_expanded):
-            temp = self.scale_expanded[i]*np.random.randn(n, self.dimension)
-
-            # Add variation to the clusters along different axes so they are less spherical
-            temp = (1+(self.ellipticity-1)*np.random.rand(self.dimension)).reshape(-1,self.dimension) * temp
-            temp = pd.DataFrame(temp)
-            temp = temp + centers[i,:]
-            out.append(temp)
-
-        self.pretransformed = pd.concat(out).values
-        exec(self.transform_dataset) # apply a nonlinear transform to creat a new set of features
-        self.data = pd.DataFrame(self.data)
-
-        # make labels
-        self.labels = np.concatenate([[i]*v for i,v in enumerate(self.size_expanded)])
-
-    
-        # Consistent names for columns and indices
-        self.elementnames = [randstring() for i in range(len(self.data.index))]
-        self.data.index = self.elementnames
-        self.original_features = [randstring() for i in range(len(self.data.columns))]
-
-
-        self.data.columns = self.original_features
-        self.labels = pd.Series(self.labels, index = self.elementnames)                
-        self.data = self.data.sample(frac=1) # re-order the datapoints so that nothing 
-                                             # can be accidentally inferred form their ordering.
-            
-        
-
-        metric = 'euclidean'
-        nneighbors = 10
-                
         start_time = time.time()
-        self.network[(metric, nneighbors)] = umap_network(self.data, nneighbors = nneighbors, metric = metric)
+        self.network[network_name] = umap_network(self.data, nneighbors = 10, metric = 'euclidean')
         end_time = time.time()
-        self.network_evaluation_time[(metric, nneighbors)] = end_time - start_time
-
-
-
-    def parameter_summary(self):
-
-        parameterdict = {'n_clusters':self.n_clusters,
-        'dimension':self.dimension,
-        'final_dimension':self.final_dimension,                         
-        'center_d':self.center_d,
-        'scale':self.scale,
-        'size':self.size,
-        'ellipticity':self.ellipticity,
-        'size_range':self.size_range,
-        'scale_range':self.scale_range,
-        'center_d_range':self.center_d_range,
-        'size_range':self.size_range,
-        'transform_dataset':self.transform_dataset}
+        self.network_evaluation_time[network_name] = end_time - start_time
         
-        return parameterdict
+        
+        
+    def parameter_summary(self):
+        unnecessary_keys = ['labels',
+                    'pretransformed_data',
+                    'data',
+                    'original_features',
+                    'elementnames',
+                    'network',
+                    'network_evaluation_time']
+            
+        return {k:v for k,v in self.__dict__.items() if k not in unnecessary_keys}
 
-
+    def make(self):
+        self.make_pretransformed()
+        self.transform()
+        self.add_more_noise()
+        self.add_metadata()
+        self.make_network()
+        
     def save(self, foldername = "scratch",  save_tabular_data = True):
-
+        """# Save the parameters used to create the dataset
+            # potentially save the datasets, save the different networks created using those features
+            """
         os.makedirs(foldername, exist_ok = True)
-
-        parameterdict = {'n_clusters':self.n_clusters,
-        'dimension':self.dimension,
-        'final_dimension':self.final_dimension,
-        'center_d':self.center_d,
-        'scale':self.scale,
-        'size':self.size,
-        'ellipticity':self.ellipticity,
-        'size_range':self.size_range,
-        'scale_range':self.scale_range,
-        'center_d_range':self.center_d_range,
-        'size_range':self.size_range,
-        'transform_dataset':self.transform_dataset}
-
+        
+        # Save the parameters used to create the dataset
+        parameterdict = self.parameter_summary()
         fp = open(f"{foldername}/parameters.json",'w')
         json.dump(parameterdict, fp)
         fp.close()
-
-        self.data.to_csv(f"{foldername}/features.csv")
-        self.labels.to_csv(f"{foldername}/labels.csv")
-
-        for parameters, network in self.network.items():
+        
+        # potentially save the datasets
+        if save_tabular_data:
+            self.data.to_csv(f"{foldername}/features.csv")
+            self.labels.to_csv(f"{foldername}/labels.csv")
+        
+        # save the different networks created using those features
+        for network_name, network in self.network.items():
             
-            for edge in network.edges():
+            for edge in network.edges():# 
                 network.edges()[edge]['weight'] = str(network.edges()[edge]['weight'])
-
-            metric  = parameters[0]
-            nneighbors =  parameters[1]
-
-            nx.write_gml(network,f"{foldername}/metric_{metric}_nneighbors_{nneighbors}.gml")
-            fp = open(f"{foldername}/evaluation_time_metric_{metric}_nneighbors_{nneighbors}", 'w')
-            fp.write(str(self.network_evaluation_time[parameters]))
-            fp.close()
-
-import re
-
-
-def load(foldername):
-
-    parameterdict = json.load(open(f"{foldername}/parameters.json"))
-    dataset = SyntheticDataSet(n_clusters=parameterdict['n_clusters'],
-                               dimension=parameterdict['dimension'],
-                               final_dimension=parameterdict['final_dimension'],
-                               center_d=parameterdict['center_d'],
-                               scale=parameterdict['scale'],
-                               size=parameterdict['size'],
-                               ellipticity=parameterdict['ellipticity'],
-                               scale_range=parameterdict['scale_range'],
-                               center_d_range=parameterdict['center_d_range'],
-                               size_range=parameterdict['size_range'],
-                               transform_dataset = parameterdict['transform_dataset'])
-
-    dataset.data = pd.read_csv(f"{foldername}/features.csv", index_col = 0)
-    dataset.labels = pd.read_csv(f"{foldername}/labels.csv", index_col = 0, header = None)[1]
-
-    for filename in [i for i in os.listdir(foldername) if i.split(".")[-1] == "gml"]:
-
-        g = re.match("metric_(?P<metric>.*?)_nneighbors_(?P<nneighbors>.*?).gml", filename)
-        parameters = g.groupdict()
-        metric = parameters['metric']
-        nneighbors = int(parameters['nneighbors'])
-
-        dataset.network[(metric, nneighbors)] = nx.read_gml(f"{foldername}/metric_{metric}_nneighbors_{nneighbors}.gml", destringizer = float)
-        fp = open(f"{foldername}/evaluation_time_metric_{metric}_nneighbors_{nneighbors}")
-        dataset.network_evaluation_time[(metric, nneighbors)]  = float(fp.read().strip())
-
-    return dataset
-
-class SyntheticDataSetSeries:
-
-    def __init__(self, start_dataset, attr, value_range):
-        
-        self.start_dataset = start_dataset
-        self.attr = attr
-        self.value_range = value_range
-
-    def make_series(self):
-        """Make the series by changing the value of one of the parameters,
-        or the mean value if the parameter varies by cluster within the dataset.
-        """
-        out = []
-        for i in self.value_range:
-            copied_dataset = copy.deepcopy(self.start_dataset)
-            copied_dataset.__setattr__(self.attr, i)
-            copied_dataset.vary_clusters()
-            copied_dataset.make_dataset()
-            out.append(copied_dataset)
-        self.datasets = out
-
-    def save(self, foldername = "data/synthetic/scratch",  save_tabular_data = True):
-        
-        os.makedirs(foldername, exist_ok = True)
-        for i, dataset in enumerate(self.datasets):
-            dataset.save(foldername + f"/dataset_{i}/")
+            
+            nx.write_gml(network,f"{foldername}/{network_name}.gml")
+            fp = open(f"{foldername}/evaluation_time_{network_name}", 'w')
+            fp.write(str(self.network_evaluation_time[network_name]))
+            fp.close()        
 
 if __name__ == "__main__":
-    
     import sys
-    import json
-    import uuid
-    
-    filename = sys.argv[1]
-    parameters = json.load(open(sys.argv[1]))
-    name = filename.split("/")[-1].split(".")[0]
-    independent_variable = parameters["independent_variable"]
-    variable_values = eval(parameters["variable_values"])
-    base_parameters = {k:v for k,v in parameters.items() if k not in ["variable_values", "independent_variable"]}
-    base_dataset = SyntheticDataSet(**base_parameters)
-    dataset_series = SyntheticDataSetSeries(
-        base_dataset,
-        independent_variable,
-        variable_values)
+    name = sys.argv[1]                
+    if  name == "amplitude":
+        x = {"size" : 1000,
+        "n_clusters" : 2,
+        "pretransformed_dimension" : 2,
+        "posttransformed_dimension" : 7,
+        "pretransformed_noise" : 0.5,
+        "posttransformed_noise" : 0.3,
+        "transformation" : "square_wave",
+        "t_period" : 1,
+        "xy_period" : 1,
+        "amplitude" : 1,
+        "rescale" : 1,
+        "correlation_parameter" : 2}
 
-    uuid = str(uuid.uuid4())
-    dataset_series.make_series()
-    dataset_series.save(f"data/synthetic/{name}-{uuid}")
-    """
-    base_dataset = SyntheticDataSet(
-        n_clusters=10,
-        dimension=5, 
-        center_d=10,
-        scale=10, 
-        size=10,
-        transform_dataset = 
-amplitude = 1
-period = 10
-n = 100
+        for i in np.linspace(1,101,11):
+            x["amplitude"] = int(i)
+            self = SyntheticDataSet(**x)
+            self.make()
+            self.save("data/synthetic/amplitude_"+str(round(i,2)))
+            
+    elif name == "final_dimension":
+        x = {"size" : 1000,
+        "n_clusters" : 2,
+        "pretransformed_dimension" : 2,
+        "posttransformed_dimension" : 7,
+        "pretransformed_noise" : 0.5,
+        "posttransformed_noise" : 0.3,
+        "transformation" : "fold",
+        "height" : 3,
+        "transition_width":1,
+        "correlation_parameter" : 2}
 
-for i in range(self.final_dimension):
-    col = np.random.choice(self.original_features, n)
-    randmat = np.random.randn(n)
-    bart = (randmat.reshape((1,n)) * self.data[col]).sum(axis = 1)
-
-    self.data[f"Transformed_{i}"] = list(map(lambda x : x**2, bart))
-
-for col in self.original_features:
-    del self.data[col]
-
-self.data = self.data/self.data.var()
-true_dimension = len(self.data.columns)
-    )
-
-    scale_dataset = SyntheticDataSetSeries(
-        base_dataset,
-        'scale',
-        list(np.linspace(0.0, 5.0, 11))
-    )
-    scale_dataset.make_series()
-    scale_dataset.save("data/synthetic/scale")
-
-    
-    print("scale")
-    size_dataset = SyntheticDataSetSeries(
-        base_dataset,
-        'size',
-        [int(i) for i in np.logspace(0,5,10)]
-    )
-    size_dataset.make_series()
-    size_dataset.save("data/synthetic/size")
-
-    print("size")
-    dimension_dataset = SyntheticDataSetSeries(
-        base_dataset,
-        'dimension',
-        [int(i) for i in np.logspace(0.2,2.5,10)]
-    )
-    dimension_dataset.make_series()
-    dimension_dataset.save("data/synthetic/dimension")
-    print("dimension")
-    final_dimension_dataset = SyntheticDataSetSeries(
-        base_dataset,
-        'final_dimension',
-        [int(i) for i in np.logspace(0.2,3,10)]
-    )
-    final_dimension_dataset.make_series()
-    final_dimension_dataset.save("data/synthetic/final_dimension")
-    print("final dimension")
-"""
+        for i in np.linspace(1,101,11):
+            x["posttransformed_dimension"] = int(i)
+            self = SyntheticDataSet(**x)
+            self.make()
+            self.save("data/synthetic/"+name+"_"+str(int(i)))

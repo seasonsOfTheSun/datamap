@@ -5,13 +5,12 @@ import memory_profiler
 
 class ClusteringMethodType:
     
-    def __init__(self, name, color, network_method = False):
+    def __init__(self, name, network_method = False):
         self.name = name
-        self.color = color
         self.network_method = network_method
 
     def summary(self):
-        return {"name":self.name, "color":self.color, "is_network_method":str(self.network_method)}
+        return {"type_name":self.name, "is_network_method":str(self.network_method)}
 
 import sklearn.metrics
 
@@ -23,7 +22,7 @@ class ClusteringMethod:
         self.labels = self.labels.reindex(dataset.labels.index)
         masked = self.labels.isna() | dataset.labels.isna()
         score = scoring_method(self.labels[~masked], dataset.labels[~masked])   
-        return score, self.evaluation_time, sum(masked), memory[0]
+        return score, self.evaluation_time, sum(masked), memory
 
     def write(self, dataset, filename, **kwargs):
         parameterdict = dataset.parameter_summary()
@@ -34,9 +33,9 @@ class ClusteringMethod:
 
 class DataClusteringMethod(ClusteringMethod):
     
-    def __init__(self, methodtype, name_specific, function, parameters = {}):
+    def __init__(self, methodtype, name, function, parameters = {}):
         self.methodtype = methodtype
-        self.name_specific = name_specific
+        self.name = name
         self.function = function
         self.parameters = parameters
 
@@ -47,13 +46,13 @@ class DataClusteringMethod(ClusteringMethod):
         self.evaluation_time = end_time - start_time
 
     def summary(self):
-        return {"specific_name":self.name_specific, **self.parameters}
+        return {"name":self.name, **self.parameters}
 
 class NetworkClusteringMethod(ClusteringMethod):
 
-    def __init__(self, methodtype, name_specific, function, parameters = {}, network_parameters = ('euclidean', 10)):
+    def __init__(self, methodtype, name, function, parameters = {}, network_parameters = ('euclidean', 10)):
         self.methodtype = methodtype
-        self.name_specific = name_specific
+        self.name = name
         self.function = function
         self.network_parameters = network_parameters
         self.parameters = parameters
@@ -68,22 +67,10 @@ class NetworkClusteringMethod(ClusteringMethod):
         self.evaluation_time = end_time - start_time + dataset.network_evaluation_time[self.network_parameters] 
 
     def summary(self):
-        return {"specific_name":self.name_specific,
+        return {"name":self.name,
                 "network_metric":self.network_parameters[0],
                 "network_nneighbors":self.network_parameters[1],
                 **self.parameters}
-
-cmap = {"black":"#000000",
-"princeton-orange": "#ee8434ff",
-"cobalt-blue": "#1446a0ff",
-"razzmatazz": "#db3069ff",
-"maximum-green": "#698f3fff",
-"medium-purple": "#a682ffff",
-"turquoise": "#42d9c8ff",
-"mindaro": "#ddfc74ff",
-"cyan-process": "#01baefff", 
-"dark-pastel-green": "#20bf55ff", 
-"orchid-pink": "#f6c0d0ff"}
 
 import sklearn.cluster
 # k-Means clustering for baseline comparison
@@ -91,7 +78,7 @@ def kmeans(X, n_clusters = 10):
     km = sklearn.cluster.KMeans(n_clusters = n_clusters)
     km.fit(X)
     return pandas.Series(km.labels_, index = X.index)
-kmeans_type = ClusteringMethodType("k-Means", "#000000")
+kmeans_type = ClusteringMethodType("k-Means")
 
 # OPTICS (Ordering Points To Infer Cluster Structure)
 def optics(X):
@@ -99,7 +86,7 @@ def optics(X):
     clusters = model.fit_predict(X)
     clusters = pandas.Series(clusters, index = X.index)
     return clusters.replace(-1, numpy.nan)
-optics_type = ClusteringMethodType("Optics",  cmap["turquoise"])
+optics_type = ClusteringMethodType("Optics")
 
 # Spectral Clustering
 def spectral_cluster(X, i):
@@ -107,7 +94,7 @@ def spectral_cluster(X, i):
     clusters = model.fit_predict(X)
     return pandas.Series(clusters, index = X.index)
 
-sc_type = ClusteringMethodType("Spectral Clustering",  cmap["turquoise"])
+sc_type = ClusteringMethodType("Spectral Clustering")
 
 # Data-Net approach
 import networkx as nx
@@ -130,13 +117,13 @@ def greedyModularity(G):
     df.index = nodes
     return df.idxmax(axis = 1)
         
-gmtype = ClusteringMethodType('GreedyModularity', cmap["medium-purple"], network_method = True)
+gmtype = ClusteringMethodType('GreedyModularity', network_method = True)
 
 import community.community_louvain
 def louvain(G):
     return pandas.Series(community.community_louvain.best_partition(G))
 
-lvtype = ClusteringMethodType('Louvain', cmap["razzmatazz"], network_method = True)
+lvtype = ClusteringMethodType('Louvain', network_method = True)
 
 import scipy.sparse
 def network_spectral(G, n_evectors=30, n_clusters=10):
@@ -158,7 +145,7 @@ def network_spectral(G, n_evectors=30, n_clusters=10):
     m.fit(evecs/np.sum(evecs, axis = 1).reshape(-1,1))
     return pd.Series(m.labels_, index=nodelist)
 
-nstype = ClusteringMethodType('network_spectral', cmap["razzmatazz"], network_method = True)
+nstype = ClusteringMethodType('network_spectral', network_method = True)
 
 
 
@@ -197,36 +184,36 @@ def autencoded_clustering(df, encoding_dim = 2,n_clusters =10 ):
     km.fit(codes)
     return  pandas.Series(km.labels_, index = df.index)
 
-autoencode_type = ClusteringMethodType("Autoencode",  cmap["princeton-orange"])
+autoencode_type = ClusteringMethodType("Autoencode")
 
     
 clustering_methods = []
 
 for i in [3,4,5]:
     clustering_methods.append(DataClusteringMethod(autoencode_type, 
-                                               f"{i}-Dimensional Autoencoder",
+                                               f"{i}_dimensional_autoencoder",
                                                 lambda X:autencoded_clustering(X, encoding_dim = i))
                              )
 
 for i in [9,10,11]:
     clustering_methods.append(DataClusteringMethod(sc_type, 
-                                               f"Spectral Clustering {i} Dimensions",
+                                               f"spectral_clustering_{i}_dimensions",
                                                 lambda X:spectral_cluster(X, i))
                              )
 
 for i in [9,10,11]:
     clustering_methods.append(DataClusteringMethod(kmeans_type,
-                                               f"k-Means {i}",
+                                               f"k_means_{i}",
                                                lambda X:kmeans(X, n_clusters=i))
                              )
 
 clustering_methods.append(DataClusteringMethod(optics_type, 
-                                           "Optics",
+                                           "optics",
                                             optics)
                          )
 
 clustering_methods.append(NetworkClusteringMethod(lvtype,
-                                           'Louvain',
+                                           'louvain',
                                            louvain)
                          )
 
@@ -236,35 +223,63 @@ clustering_methods.append(NetworkClusteringMethod(nstype,
                          )
 
 clustering_methods.append(NetworkClusteringMethod(gmtype,
-                                            'GreedyModularity',
+                                            'greedy_modularity',
                                             greedyModularity
                                             )
                          )
 
-clustering_method_dict = {c.name_specific:c for c in clustering_methods}
+clustering_method_dict = {c.name:c for c in clustering_methods}
+
+class DataSet:
+
+    
+    def __init__(self, **kwargs):
+        """
+        Makes a dataset 
+        """
+        self.parameters = kwargs
+
+    def parameter_summary(self):
+        return self.parameters
+
+import json
+import pandas as pd
+import re
+def load(foldername):
+
+    parameterdict = json.load(open(f"{foldername}/parameters.json"))
+    dataset = DataSet(**parameterdict)
+
+    dataset.data = pd.read_csv(f"{foldername}/features.csv", index_col = 0)
+    dataset.labels = pd.read_csv(f"{foldername}/labels.csv", index_col = 0)["labels"]
+
+    dataset.network = {}
+    dataset.network_evaluation_time = {}
+    for filename in [i for i in os.listdir(foldername) if i.split(".")[-1] == "gml"]:
+
+        name = re.match("(?P<name>.*?).gml", filename).groupdict()['name']
+
+        dataset.network[name] = nx.read_gml(f"{foldername}/{name}.gml")
+        fp = open(f"{foldername}/evaluation_time_{name}")
+        dataset.network_evaluation_time[name]  = float(fp.read().strip())
+
+    return dataset
+
 
 if __name__ == "__main__":
 
      import os
      import sys
-     import synthetic_data
      import uuid
+     import re
 
      clustering_method_name = sys.argv[1]
      dataset_filename = sys.argv[2]
-     output_folder = sys.argv[3]
-     git_status = sys.argv[4]
-     dataset_name, version = dataset_filename.split("/")[-2].split("-")
-     
-     if output_folder[-1] != "/":
-         output_folder += "/"
-     output_filename = output_folder + str(uuid.uuid4()) + ".csv"
-     method = clustering_method_dict[clustering_method_name]
-     dataset = synthetic_data.load(dataset_filename)
 
-     method.write(dataset, 
-                  output_filename, 
-                  dataset_name=dataset_name, 
-                  git_status=git_status, 
-                  version=version
-                  )
+     output_filename = clustering_method_name + "_" + re.sub("/", "_", dataset_filename) + "_" + str(uuid.uuid4()) + ".csv"
+
+     method = clustering_method_dict[clustering_method_name]
+     dataset = load(dataset_filename)
+
+     method.write(dataset,
+                  "data/processed/clustering/"+output_filename)
