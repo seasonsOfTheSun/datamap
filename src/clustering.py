@@ -270,13 +270,20 @@ if __name__ == "__main__":
 
      import os
      import sys
-     import uuid
      import re
 
      clustering_method_name = sys.argv[1]
      dataset_filename = sys.argv[2]
+    
+    try:
+        seed = sys.argv[3]
+    except IndexError:
+        seed = 108
 
-     output_filename = clustering_method_name + "_" + re.sub("/", "_", dataset_filename) + "_" + str(uuid.uuid4()) + ".csv"
+    np.random.seed(seed)
+    random.seed(seed)
+
+     output_filename = clustering_method_name + "_" + re.sub("/", "_", dataset_filename) + "_" + str(seed) + ".csv"
 
      method = clustering_method_dict[clustering_method_name]
      dataset = load(dataset_filename)
