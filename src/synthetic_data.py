@@ -377,9 +377,17 @@ class SyntheticDataSet:
 
 if __name__ == "__main__":
     import sys
-    import uuid
 
-    name = sys.argv[1]                
+    name = sys.argv[1]
+    try:
+        seed = int(sys.argv[2])
+    except IndexError:
+        seed = 108
+
+    np.random.seed(seed)
+    random.seed(seed)
+
+
     if  name == "amplitude":
         x = {"size" : 1000,
         "n_clusters" : 2,
@@ -395,10 +403,10 @@ if __name__ == "__main__":
         "correlation_parameter" : 2}
 
         for i in np.linspace(1,101,11):
-            x["amplitude"] = int(i)
+            x["amplitude"] = i
             self = SyntheticDataSet(**x)
             self.make()
-            self.save("data/synthetic/amplitude_"+str(round(i,2))+ str(uuid.uuid4()))
+            self.save("data/synthetic/amplitude_"+str(round(i,2))+ str(seed))
             
     elif name == "final_dimension":
         x = {"size" : 1000,
@@ -416,4 +424,4 @@ if __name__ == "__main__":
             x["posttransformed_dimension"] = int(i)
             self = SyntheticDataSet(**x)
             self.make()
-            self.save("data/synthetic/"+name+"_"+str(int(i))+ str(uuid.uuid4()))
+            self.save("data/synthetic/"+name+"_"+str(int(i))+ str(seed))
