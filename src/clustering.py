@@ -276,7 +276,7 @@ if __name__ == "__main__":
      dataset_filename = sys.argv[2]
     
      try:
-         seed = sys.argv[3]
+         seed = int(sys.argv[3])
      except IndexError:
          seed = 108
 
