@@ -367,7 +367,7 @@ class SyntheticDataSet:
         # save the different networks created using those features
         for network_name, network in self.network.items():
             
-            for edge in network.edges():# 
+            for edge in network.edges():
                 network.edges()[edge]['weight'] = str(network.edges()[edge]['weight'])
             
             nx.write_gml(network,f"{foldername}/{network_name}.gml")
@@ -406,7 +406,7 @@ if __name__ == "__main__":
             x["amplitude"] = i
             self = SyntheticDataSet(**x)
             self.make()
-            self.save("data/synthetic/amplitude_"+str(round(i,2))+ str(seed))
+            self.save("data/synthetic/amplitude_"+str(round(i,2))+ "_"+ str(seed))
             
     elif name == "final_dimension":
         x = {"size" : 1000,
@@ -424,4 +424,4 @@ if __name__ == "__main__":
             x["posttransformed_dimension"] = int(i)
             self = SyntheticDataSet(**x)
             self.make()
-            self.save("data/synthetic/"+name+"_"+str(int(i))+ str(seed))
+            self.save("data/synthetic/"+name+"_"+str(int(i))+"_"+str(seed))

@@ -50,7 +50,7 @@ class DataClusteringMethod(ClusteringMethod):
 
 class NetworkClusteringMethod(ClusteringMethod):
 
-    def __init__(self, methodtype, name, function, parameters = {}, network_parameters = ('euclidean', 10)):
+    def __init__(self, methodtype, name, function, parameters = {}, network_parameters = 'nneighbors_10_metric_euclidean'):
         self.methodtype = methodtype
         self.name = name
         self.function = function
@@ -68,8 +68,7 @@ class NetworkClusteringMethod(ClusteringMethod):
 
     def summary(self):
         return {"name":self.name,
-                "network_metric":self.network_parameters[0],
-                "network_nneighbors":self.network_parameters[1],
+                "network":self.network_parameters,
                 **self.parameters}
 
 import sklearn.cluster
@@ -263,6 +262,9 @@ def load(foldername):
         fp = open(f"{foldername}/evaluation_time_{name}")
         dataset.network_evaluation_time[name]  = float(fp.read().strip())
 
+        for edge in dataset.network[name].edges():
+            dataset.network[name].edges()[edge]['weight'] = float(dataset.network[name].edges()[edge]['weight'])
+
     return dataset
 
 
@@ -275,6 +277,11 @@ if __name__ == "__main__":
      clustering_method_name = sys.argv[1]
      dataset_filename = sys.argv[2]
     
+     g = re.match( "data/synthetic/(?P<dataset_series>.*?)_(?P<independent_variable>.*?)_(?P<dataset_seed>.*?)$", dataset_filename)
+     independent_variable = g.groupdict()["independent_variable"]
+     dataset_series       = g.groupdict()["dataset_series"]
+     dataset_seed         = g.groupdict()["dataset_seed"]
+
      try:
          seed = int(sys.argv[3])
      except IndexError:
@@ -289,4 +296,8 @@ if __name__ == "__main__":
      dataset = load(dataset_filename)
 
      method.write(dataset,
-                  "data/processed/clustering/"+output_filename)
+                  "data/processed/clustering/"+output_filename,
+                  independent_variable = independent_variable,
+                  dataset_series = dataset_series,
+                  dataset_seed = dataset_seed,
+                  clustering_seed = seed)
